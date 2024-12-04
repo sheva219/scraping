@@ -13,41 +13,60 @@ def get_competition_data(urls):
             soup = BeautifulSoup(response.text, "html.parser")
             elements = soup.find_all(class_="master-games-master-game")
             for element in elements:
-                match = []
                 try:
                     # Player name
-                    elms = element.find_all("span", class_="master-games-username")
-                    player1 = elms[0].get_text(strip=True)
-                    player2 = elms[1].get_text(strip=True)
-                    
+                    player_name_elements = element.find_all("span", class_="master-games-username")
+                    player1 = player_name_elements[0].get_text(strip=True)
+                    player2 = player_name_elements[1].get_text(strip=True)
+
                     # Player rating
-                    elms = element.find_all("span", class_="master-games-user-rating")
-                    rating1 = elms[0].get_text(strip=True)
-                    rating2 = elms[1].get_text(strip=True)
-                    
+                    if len(element.find_all("span", class_="master-games-user-rating")) < 2:
+                        rating1 = rating2 = "(nan)"
+                    else:
+                        ratings_elements = element.find_all("span", class_="master-games-user-rating")
+                        rating1 = ratings_elements[0].get_text(strip=True)
+                        rating2 = ratings_elements[1].get_text(strip=True)
+
                     # States & Opening
-                    elms = element.find_all("a", class_="master-games-content-stats")
-                    elms = elms.find_all("span")
-                    # States
-                    states = elms[0].get_text(strip=True)
-                    # Opening
-                    opening = elms[1].get_text(strip=True)
-                    
+                    stats_opening_elements_temp = element.find("a", class_="master-games-content-stats")
+                    stats_opening_elements = stats_opening_elements_temp.find_all("span")
+                    stats = stats_opening_elements[0].get_text(strip=True)
+                    opening = stats_opening_elements[1].get_text(strip=True)
+
                     # Result
-                    
-                    
-                    match.append(player1)
-                    match.append(player2)
-                    match.append(rating1)
-                    match.append(rating2)
-                    match.append(states)
-                    match.append(opening)
-                    match.append(result)
-                    matches.append(match)
+                    result = element.find("td", class_="master-games-text-center").find("a").get_text(strip=True)
+
+                    if result[:1] == '½':
+                        wining1 = 0.5
+                    else:
+                        wining1 = result[:1]
+
+                    if result[-1:] == '½':
+                        wining2 = 0.5
+                    else:
+                        wining2 = result[-1:]
+
+                    # Moves
+                    moves = element.find("td", class_="master-games-text-right").find("a").get_text(strip=True)
+
+                    # Year
+                    year = element.find("a", class_="master-games-date").get_text(strip=True)
+
+                    matches.append([
+                        player1, wining1, rating1, player2, wining2, 
+                        rating2, stats, opening, moves, year
+                    ])
+
                 except Exception as e:
                     print(f"Error processing element: {e}")
-    print(len(matches))
-    print(matches[0])
+    df = pd.DataFrame(matches, columns=[
+        "Player1 Name", "Number of player1 wining round", 
+        "Ranking of player1", "Player2 Name", 
+        "Number of player1 wining round", "Ranking of player2", 
+        "Stats", "Opening", "Moves", "Year"
+    ])
+    df.to_csv("output.csv", index=False)
+    print("Data saved to output.csv")
 def main():
     urls = [
         "https://www.chess.com/games/search?fromSearchShort=1&p1=Nijat+Abasov&playerId=44585&page=1",
